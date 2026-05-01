@@ -77,7 +77,7 @@ export default function PTWMap() {
 
   // Poll every 5s so viewers see editor's changes
   useEffect(() => {
-    const t = setInterval(loadState, 5000);
+    const t = setInterval(loadState, 10000);
     return () => clearInterval(t);
   }, [loadState]);
 
