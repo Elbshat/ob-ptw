@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { PERMIT_TYPES, typeInfoOf, toLocalInput, getConflictPairs, fmtDT, permitStatus, timeRemaining, smBtn } from "./helpers.js";
+import { typeInfoOf, toLocalInput, getConflictPairs, fmtDT, permitStatus, timeRemaining, smBtn } from "./helpers.js";
+import { upload } from "@vercel/blob/client";
 import { api } from "./api.js";
 import LoginModal from "./LoginModal.jsx";
 import AddPermitModal from "./AddPermitModal.jsx";
@@ -7,6 +8,7 @@ import DailyReportModal from "./DailyReportModal.jsx";
 import ListTab from "./ListTab.jsx";
 import Sidebar from "./Sidebar.jsx";
 import MapCanvas from "./MapCanvas.jsx";
+
 
 export default function PTWMap() {
   const [permits, setPermits]       = useState([]);
@@ -438,43 +440,53 @@ export default function PTWMap() {
   };
 
   // ── Map file upload ────────────────────────────────────────────
-  const onMapFile = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    if (!isEditor) {
-      alert("Only the editor can change the map.");
-      return;
-    }
-    const r = new FileReader();
-    r.onload = async (ev) => {
-      const dataUrl = ev.target.result;
-      const probe = new Image();
-      probe.onload = async () => {
-        try {
-          const result = await apiCall(() =>
-            api.send(
-              "POST",
-              "/api/map",
-              {
-                image: dataUrl,
-                natW: probe.naturalWidth,
-                natH: probe.naturalHeight,
-              },
-              token
-            )
-          );
-          setImageReady(false);
-          setPlotImage(result.imageUrl || dataUrl);
-          setNatSize({ w: probe.naturalWidth, h: probe.naturalHeight });
-          setPermits([]);
-          setSelected(null);
-        } catch {}
-      };
-      probe.src = dataUrl;
+// ── Map file upload ────────────────────────────────────────────
+const onMapFile = async (e) => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  if (!isEditor) {
+    alert("Only the editor can change the map.");
+    return;
+  }
+
+  // 1. Get natural dimensions directly from the file (no base64 needed)
+  const { natW, natH } = await new Promise((resolve) => {
+    const probe = new Image();
+    const objectUrl = URL.createObjectURL(f);
+    probe.onload = () => {
+      resolve({ natW: probe.naturalWidth, natH: probe.naturalHeight });
+      URL.revokeObjectURL(objectUrl);
     };
-    r.readAsDataURL(f);
-    e.target.value = "";
-  };
+    probe.src = objectUrl;
+  });
+
+  try {
+    setSyncStatus("⏳ uploading…");
+
+    // 2. Upload file DIRECTLY from browser → Vercel Blob (bypasses function limit ✅)
+    const { upload } = await import("@vercel/blob/client");
+    const { url } = await upload(f.name, f, {
+      access: "public",
+      handleUploadUrl: "/api/map-token",
+      clientPayload: token,
+    });
+
+    // 3. Send only the short URL to your API (tiny payload, no size issue ✅)
+    await apiCall(() =>
+      api.send("POST", "/api/map", { url, natW, natH }, token)
+    );
+
+    setImageReady(false);
+    setPlotImage(url);
+    setNatSize({ w: natW, h: natH });
+    setPermits([]);
+    setSelected(null);
+  } catch (err) {
+    setSyncStatus("⚠ upload failed");
+    console.error(err);
+  }
+};
 
   // ── Zoom helpers ───────────────────────────────────────────────
   const zoomBy = (factor) => {

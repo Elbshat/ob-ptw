@@ -1,17 +1,32 @@
-import { put } from "@vercel/blob";
 import { sql } from "@vercel/postgres";
+import { ensureSchema } from "./_lib/db.js";
+import { verifyToken } from "./_lib/auth.js";
+import { del } from "@vercel/blob";
 
 export default async function handler(req, res) {
-  // Convert base64 body → Buffer → upload to Blob
-  const { imageBase64, natW, natH } = req.body;
-  const buffer = Buffer.from(imageBase64.split(",")[1], "base64");
+  await ensureSchema();
 
-  const { url } = await put("plot-plan.png", buffer, { access: "public" });
+  if (req.method === "POST") {
+    try {
+      verifyToken(req);
+    } catch {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-  await sql`
-    UPDATE map SET image_url = ${url}, nat_w = ${natW}, nat_h = ${natH},
-    updated_at = NOW() WHERE id = 1
-  `;
+    const { url, natW, natH } = req.body; // just a URL string now ✅
 
-  res.json({ ok: true, url });
+    // Delete old blob if exists
+    const { rows } = await sql`SELECT image_url FROM map WHERE id = 1`;
+    if (rows[0]?.image_url) {
+      try { await del(rows[0].image_url); } catch {}
+    }
+
+    await sql`
+      UPDATE map SET image_url=${url}, nat_w=${natW}, nat_h=${natH},
+      updated_at=NOW() WHERE id=1
+    `;
+    return res.json({ ok: true });
+  }
+
+  res.status(405).end();
 }
