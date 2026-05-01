@@ -1,7 +1,8 @@
-import { handleUpload } from "@vercel/blob"; // ✅ server import, NOT /client
-import { requireEditor } from "./_lib/auth.js";
+import { handleUpload } from "@vercel/blob/client"; // ✅ back to /client
+import { requireEditor, handleCors } from "./_lib/auth.js"; // ✅ correct functions
 
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
   if (req.method !== "POST") return res.status(405).end();
 
   try {
@@ -10,7 +11,7 @@ export default async function handler(req, res) {
       request: req,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const fakeReq = {
-          headers: { authorization: `Bearer ${clientPayload}` }
+          headers: { authorization: `Bearer ${clientPayload}` },
         };
         const auth = requireEditor(fakeReq);
         if (!auth.ok) throw new Error("Unauthorized");
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
 
     return res.json(jsonResponse);
   } catch (err) {
-    console.error("map-token error:", err);
+    console.error("map-token error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 }

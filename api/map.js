@@ -1,12 +1,12 @@
 import { sql } from "@vercel/postgres";
 import { del } from "@vercel/blob";
 import { ensureSchema } from "./_lib/db.js";
-import { requireEditor, handleCors } from "./_lib/auth.js"; // ✅ correct imports
+import { requireEditor, handleCors } from "./_lib/auth.js"; // ✅ no verifyToken
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
 
-  const auth = requireEditor(req); // ✅ not verifyToken
+  const auth = requireEditor(req); // ✅ correct function
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
