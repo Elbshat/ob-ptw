@@ -464,13 +464,12 @@ const onMapFile = async (e) => {
   try {
     setSyncStatus("⏳ uploading…");
 
-    // 2. Upload file DIRECTLY from browser → Vercel Blob (bypasses function limit ✅)
-    const { upload } = await import("@vercel/blob/client");
-    const { url } = await upload(f.name, f, {
-      access: "public",
-      handleUploadUrl: "/api/map-token",
-      clientPayload: token,
-    });
+    // 2. Upload directly from browser → Vercel Blob
+const { url } = await upload(f.name, f, {
+  access: "public",
+  handleUploadUrl: "/api/map-token",
+  clientPayload: token,
+});
 
     // 3. Send only the short URL to your API (tiny payload, no size issue ✅)
     await apiCall(() =>

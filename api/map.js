@@ -1,32 +1,32 @@
 import { sql } from "@vercel/postgres";
-import { ensureSchema } from "./_lib/db.js";
-import { verifyToken } from "./_lib/auth.js";
 import { del } from "@vercel/blob";
+import { ensureSchema } from "./_lib/db.js";
+import { requireEditor, handleCors } from "./_lib/auth.js"; // ✅ correct imports
 
 export default async function handler(req, res) {
+  if (handleCors(req, res)) return;
+
+  const auth = requireEditor(req); // ✅ not verifyToken
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
   await ensureSchema();
 
-  if (req.method === "POST") {
-    try {
-      verifyToken(req);
-    } catch {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  const { url, natW, natH } = req.body; // ✅ URL only, no base64
+  if (!url || !natW || !natH) return res.status(400).json({ error: "Missing fields" });
 
-    const { url, natW, natH } = req.body; // just a URL string now ✅
+  try {
+    const prev = await sql`SELECT image_url FROM map WHERE id = 1`;
+    const prevUrl = prev.rows[0]?.image_url;
+    if (prevUrl) await del(prevUrl);
+  } catch { /* non-fatal */ }
 
-    // Delete old blob if exists
-    const { rows } = await sql`SELECT image_url FROM map WHERE id = 1`;
-    if (rows[0]?.image_url) {
-      try { await del(rows[0].image_url); } catch {}
-    }
+  await sql`
+    UPDATE map SET image_url = ${url}, nat_w = ${natW}, nat_h = ${natH}, updated_at = NOW()
+    WHERE id = 1
+  `;
+  await sql`DELETE FROM permits`;
 
-    await sql`
-      UPDATE map SET image_url=${url}, nat_w=${natW}, nat_h=${natH},
-      updated_at=NOW() WHERE id=1
-    `;
-    return res.json({ ok: true });
-  }
-
-  res.status(405).end();
+  res.json({ ok: true, imageUrl: url });
 }

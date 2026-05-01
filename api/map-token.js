@@ -1,26 +1,30 @@
-import { handleUpload } from "@vercel/blob/multipart";
-import { verifyToken } from "./_lib/auth.js";
+import { handleUpload } from "@vercel/blob"; // ✅ server import, NOT /client
+import { requireEditor } from "./_lib/auth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-  
+
   try {
-    verifyToken(req); // only editors can upload
-  } catch {
-    return res.status(401).json({ error: "Unauthorized" });
+    const jsonResponse = await handleUpload({
+      body: req.body,
+      request: req,
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
+        const fakeReq = {
+          headers: { authorization: `Bearer ${clientPayload}` }
+        };
+        const auth = requireEditor(fakeReq);
+        if (!auth.ok) throw new Error("Unauthorized");
+        return {
+          allowedContentTypes: ["image/png", "image/jpeg", "image/jpg"],
+          maximumSizeInBytes: 30 * 1024 * 1024,
+        };
+      },
+      onUploadCompleted: async ({ blob }) => {},
+    });
+
+    return res.json(jsonResponse);
+  } catch (err) {
+    console.error("map-token error:", err);
+    return res.status(500).json({ error: err.message });
   }
-
-  const jsonResponse = await handleUpload({
-    body: req.body,
-    request: req,
-    onBeforeGenerateToken: async (pathname) => ({
-      allowedContentTypes: ["image/png", "image/jpeg"],
-      maximumSizeInBytes: 20 * 1024 * 1024, // 20MB allowed
-    }),
-    onUploadCompleted: async ({ blob }) => {
-      // optionally save URL to DB here
-    },
-  });
-
-  return res.json(jsonResponse);
 }
