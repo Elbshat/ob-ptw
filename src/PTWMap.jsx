@@ -160,7 +160,7 @@ export default function PTWMap() {
     };
   };
 
-  const applyZoomAt = (factor, cx, cy) => {
+  const applyZoomAt = useCallback((factor, cx, cy) => {
     const oldZ = zoomRef.current;
     const newZ = Math.min(Math.max(oldZ * factor, 0.02), 50);
     if (newZ === oldZ) return;
@@ -173,7 +173,7 @@ export default function PTWMap() {
     panRef.current = newP;
     setZoom(newZ);
     setPan(newP);
-  };
+  }, []);
 
   // ── Image load → auto-fit ──────────────────────────────────────
   const handleImageLoad = (e) => {
@@ -207,7 +207,7 @@ export default function PTWMap() {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [plotImage, applyZoomAt]); // Re-attach when plot image changes or applyZoomAt changes
 
   // ── Keyboard shortcuts ─────────────────────────────────────────
   useEffect(() => {
@@ -226,7 +226,7 @@ export default function PTWMap() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showModal, showLogin, showReport, selected, isEditor]);
+  }, [showModal, showLogin, showReport, selected, isEditor, applyZoomAt, resetView, removePermit]);
 
   // ── Global drag / resize / pan handlers ─────────────────────────
   useEffect(() => {
@@ -446,7 +446,7 @@ export default function PTWMap() {
   };
 
   // ── Remove permit ──────────────────────────────────────────────
-  const removePermit = async (id) => {
+  const removePermit = useCallback(async (id) => {
     if (!isEditor) return;
     try {
       await apiCall(() =>
@@ -455,7 +455,7 @@ export default function PTWMap() {
       setPermits(prev => prev.filter(p => p.id !== id));
       if (selected === id) setSelected(null);
     } catch {}
-  };
+  }, [isEditor, token, selected, apiCall]);
 
   // ── Map file upload ────────────────────────────────────────────
 const onMapFile = async (e) => {
@@ -511,7 +511,7 @@ const onMapFile = async (e) => {
     applyZoomAt(factor, rect.width / 2, rect.height / 2);
   };
 
-  const resetView = () => {
+  const resetView = useCallback(() => {
     if (!canvasRef.current) return;
     const cw = canvasRef.current.clientWidth;
     const ch = canvasRef.current.clientHeight;
@@ -522,7 +522,7 @@ const onMapFile = async (e) => {
     panRef.current = { x: px, y: py };
     setZoom(fitZ);
     setPan({ x: px, y: py });
-  };
+  }, [natSize]);
 
   // ── Derived UI state ───────────────────────────────────────────
   const selPermit = permits.find(p => p.id === selected);
