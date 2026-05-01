@@ -120,7 +120,7 @@ export default function PTWMap() {
   };
 
   // ── API call wrapper with sync status ───────────────────────────
-  const apiCall = async (fn) => {
+  const apiCall = useCallback(async (fn) => {
     try {
       setSyncStatus("⏳ saving…");
       const result = await fn();
@@ -136,7 +136,7 @@ export default function PTWMap() {
       }
       throw e;
     }
-  };
+  }, []);
 
   // Debounced patch — coalesces rapid drag/resize updates
   const schedulePatch = (id, patch) => {
@@ -455,7 +455,7 @@ export default function PTWMap() {
       setPermits(prev => prev.filter(p => p.id !== id));
       if (selected === id) setSelected(null);
     } catch {}
-  }, [isEditor, token, selected, apiCall]);
+  }, [isEditor, token, selected]);
 
   // ── Map file upload ────────────────────────────────────────────
 const onMapFile = async (e) => {
