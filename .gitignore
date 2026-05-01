@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env.local
+.env
+.vercel
+*.log
+
+
+DEPLOYMENT.md
+IMPLEMENTATION_SUMMARY.md
+PROJECT_STATUS.md
+QUICKSTART.md
+PROJECT_COMPLETE.txt
