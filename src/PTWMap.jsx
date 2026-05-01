@@ -57,10 +57,13 @@ export default function PTWMap() {
 
   // ── Load state from server ──────────────────────────────────────
   const loadState = useCallback(async () => {
+    // Don't poll if user is actively interacting (prevents overwriting local changes)
+    if (interRef.current) return;
+    
     try {
       const { map, permits: srvPermits } = await api.get("/api/state");
       const hydrated = srvPermits.map(p => ({ ...p, typeInfo: typeInfoOf(p.type) }));
-      if (!interRef.current) setPermits(hydrated);
+      setPermits(hydrated);
       if (map?.image && map.image !== plotRef.current) {
         setPlotImage(map.image);
         if (map.natW && map.natH) setNatSize({ w: map.natW, h: map.natH });
@@ -78,8 +81,9 @@ export default function PTWMap() {
   useEffect(() => { loadState(); }, []);
 
   // Poll every 5s so viewers see editor's changes
+  // Increased to 1m to reduce interference with editing
   useEffect(() => {
-    const t = setInterval(loadState, 10000);
+    const t = setInterval(loadState, 60 * 1000);
     return () => clearInterval(t);
   }, [loadState]);
 
@@ -245,13 +249,15 @@ export default function PTWMap() {
 
       if (inter.mode === "resize") {
         const ip = toImg(e.clientX, e.clientY);
-        let newR;
+        // Use locked center position from interRef, not current permit position
+        const newR = Math.max(0, Math.sqrt(
+          (ip.x - inter.centerX) ** 2 + (ip.y - inter.centerY) ** 2
+        ));
         setPermits(prev => prev.map(p => {
           if (p.id !== inter.id) return p;
-          newR = Math.max(0, Math.sqrt((ip.x - p.ix) ** 2 + (ip.y - p.iy) ** 2));
           return { ...p, radius: newR };
         }));
-        if (newR !== undefined) schedulePatch(inter.id, { radius: newR });
+        schedulePatch(inter.id, { radius: newR });
       }
 
       if (inter.mode === "pan") {
@@ -305,7 +311,13 @@ export default function PTWMap() {
         if (!p.radius) continue;
         const dist = Math.sqrt((ip.x - p.ix) ** 2 + (ip.y - p.iy) ** 2);
         if (Math.abs(dist - p.radius) < 12 / z) {
-          interRef.current = { mode: "resize", id: p.id };
+          interRef.current = { 
+            mode: "resize", 
+            id: p.id,
+            centerX: p.ix,  // Lock center position
+            centerY: p.iy,
+            startRadius: p.radius
+          };
           setSelected(p.id);
           return;
         }
@@ -319,7 +331,13 @@ export default function PTWMap() {
         if (isEditor) {
           if (p.id === selected && !p.radius) {
             // Selected permit with no radius → drag-out to create zone
-            interRef.current = { mode: "resize", id: p.id };
+            interRef.current = { 
+              mode: "resize", 
+              id: p.id,
+              centerX: p.ix,  // Lock center position
+              centerY: p.iy,
+              startRadius: 0
+            };
           } else {
             interRef.current = {
               mode: "drag",
