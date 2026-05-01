@@ -193,6 +193,47 @@ export default function PTWMap() {
     setImageReady(true);
   };
 
+  // ── Zoom helpers ───────────────────────────────────────────────
+const zoomBy = (factor) => {
+  if (!canvasRef.current) return;
+  const rect = canvasRef.current.getBoundingClientRect();
+  applyZoomAt(factor, rect.width / 2, rect.height / 2);
+};
+
+const resetView = useCallback(() => {
+  if (!canvasRef.current) return;
+
+  const cw = canvasRef.current.clientWidth;
+  const ch = canvasRef.current.clientHeight;
+
+  const fitZ = Math.min(cw / natSize.w, ch / natSize.h) * 0.95;
+  const px = (cw - natSize.w * fitZ) / 2;
+  const py = (ch - natSize.h * fitZ) / 2;
+
+  zoomRef.current = fitZ;
+  panRef.current = { x: px, y: py };
+
+  setZoom(fitZ);
+  setPan({ x: px, y: py });
+}, [natSize]);
+
+// ── Remove permit ──────────────────────────────────────────────
+const removePermit = useCallback(async (id) => {
+  if (!isEditor) return;
+
+  try {
+    await apiCall(() =>
+      api.send("DELETE", `/api/permits/${id}`, null, token)
+    );
+
+    setPermits(prev => prev.filter(p => p.id !== id));
+
+    if (selected === id) {
+      setSelected(null);
+    }
+  } catch {}
+}, [isEditor, token, selected, apiCall]);
+
   // ── Wheel zoom ─────────────────────────────────────────────────
   useEffect(() => {
     const el = canvasRef.current;
@@ -445,17 +486,6 @@ export default function PTWMap() {
     } catch {}
   };
 
-  // ── Remove permit ──────────────────────────────────────────────
-  const removePermit = useCallback(async (id) => {
-    if (!isEditor) return;
-    try {
-      await apiCall(() =>
-        api.send("DELETE", `/api/permits/${id}`, null, token)
-      );
-      setPermits(prev => prev.filter(p => p.id !== id));
-      if (selected === id) setSelected(null);
-    } catch {}
-  }, [isEditor, token, selected]);
 
   // ── Map file upload ────────────────────────────────────────────
 const onMapFile = async (e) => {
@@ -503,26 +533,6 @@ const onMapFile = async (e) => {
     console.error(err);
   }
 };
-
-  // ── Zoom helpers ───────────────────────────────────────────────
-  const zoomBy = (factor) => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    applyZoomAt(factor, rect.width / 2, rect.height / 2);
-  };
-
-  const resetView = useCallback(() => {
-    if (!canvasRef.current) return;
-    const cw = canvasRef.current.clientWidth;
-    const ch = canvasRef.current.clientHeight;
-    const fitZ = Math.min(cw / natSize.w, ch / natSize.h) * 0.95;
-    const px = (cw - natSize.w * fitZ) / 2;
-    const py = (ch - natSize.h * fitZ) / 2;
-    zoomRef.current = fitZ;
-    panRef.current = { x: px, y: py };
-    setZoom(fitZ);
-    setPan({ x: px, y: py });
-  }, [natSize]);
 
   // ── Derived UI state ───────────────────────────────────────────
   const selPermit = permits.find(p => p.id === selected);
