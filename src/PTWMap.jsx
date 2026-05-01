@@ -440,7 +440,6 @@ export default function PTWMap() {
   };
 
   // ── Map file upload ────────────────────────────────────────────
-// ── Map file upload ────────────────────────────────────────────
 const onMapFile = async (e) => {
   const f = e.target.files[0];
   e.target.value = "";
@@ -450,7 +449,6 @@ const onMapFile = async (e) => {
     return;
   }
 
-  // 1. Get natural dimensions directly from the file (no base64 needed)
   const { natW, natH } = await new Promise((resolve) => {
     const probe = new Image();
     const objectUrl = URL.createObjectURL(f);
@@ -464,23 +462,24 @@ const onMapFile = async (e) => {
   try {
     setSyncStatus("⏳ uploading…");
 
-    // 2. Upload directly from browser → Vercel Blob
-const { url } = await upload(f.name, f, {
-  access: "public",
-  handleUploadUrl: "/api/map-token",
-  clientPayload: token,
-});
+    const { url } = await upload(f.name, f, {
+      access: "public",
+      handleUploadUrl: "/api/map-token",
+      clientPayload: token,
+    });
 
-    // 3. Send only the short URL to your API (tiny payload, no size issue ✅)
-    await apiCall(() =>
-      api.send("POST", "/api/map", { url, natW, natH }, token)
-    );
-
+    // ✅ Show image IMMEDIATELY after blob upload — don't wait for DB
     setImageReady(false);
     setPlotImage(url);
     setNatSize({ w: natW, h: natH });
     setPermits([]);
     setSelected(null);
+
+    // Save URL to DB separately — won't block the image display
+    await apiCall(() =>
+      api.send("POST", "/api/map", { url, natW, natH }, token)
+    );
+
   } catch (err) {
     setSyncStatus("⚠ upload failed");
     console.error(err);
