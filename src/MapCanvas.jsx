@@ -44,7 +44,7 @@ export default function MapCanvas({
               <style>{`
                 @keyframes pulse {
                   0%, 100% { transform: scale(1); }
-                  50% { transform: scale(1.05); }
+                  50% { transform: scale(1.18); }
                 }
                 .active-pulse {
                   animation: pulse 2s ease-in-out infinite;
