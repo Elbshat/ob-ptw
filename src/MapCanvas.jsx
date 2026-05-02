@@ -87,7 +87,7 @@ export default function MapCanvas({
                       stroke={isConflict ? "#FF2D2D" : col}
                       strokeWidth={isSel ? 2.5/zoom : 1.5/zoom}
                       strokeDasharray={isConflict || dimmed ? `${8/zoom} ${4/zoom}` : "none"}
-                      className={status.code === "active" && !isConflict ? "active-pulse" : ""} />
+                      />
                   )}
                   {isSel && p.radius > 0 && isEditor && (
                     <circle cx={p.ix + p.radius} cy={p.iy} r={7/zoom} fill={col} stroke="#fff" strokeWidth={1.5/zoom} />
@@ -96,7 +96,7 @@ export default function MapCanvas({
                     <circle cx={p.ix} cy={p.iy} r={dotR + 6/zoom} fill="none" stroke={col} strokeWidth={1.5/zoom} opacity={0.4} />
                   )}
                   <circle cx={p.ix} cy={p.iy} r={dotR} fill={col}
-                    stroke={isConflict ? "#FF2D2D" : "#0D0F14"} strokeWidth={2/zoom} />
+                    stroke={isConflict ? "#FF2D2D" : "#0D0F14"} strokeWidth={2/zoom}  className={status.code === "active" && !isConflict ? "active-pulse" : ""} />
                   <text x={p.ix} y={p.iy + dotR + 12/zoom}
                     textAnchor="middle" fill={col}
                     fontSize={10/zoom} fontFamily="monospace" fontWeight="bold">{p.number}</text>
