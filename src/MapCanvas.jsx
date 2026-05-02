@@ -38,6 +38,21 @@ export default function MapCanvas({
             draggable={false} alt="plot plan" crossOrigin="anonymous" />
           <svg width={natSize.w} height={natSize.h}
             style={{ position: "absolute", top: 0, left: 0, overflow: "visible", pointerEvents: "none" }}>
+            
+            {/* CSS Animation for active permits */}
+            <defs>
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { transform: scale(1); }
+                  50% { transform: scale(1.05); }
+                }
+                .active-pulse {
+                  animation: pulse 2s ease-in-out infinite;
+                  transform-origin: center;
+                  transform-box: fill-box;
+                }
+              `}</style>
+            </defs>
 
             {conflictPairs.map(([aId, bId], idx) => {
               const a = permits.find(p => p.id === aId);
@@ -71,7 +86,8 @@ export default function MapCanvas({
                       fill={isConflict ? "rgba(255,45,45,0.12)" : p.typeInfo.bg}
                       stroke={isConflict ? "#FF2D2D" : col}
                       strokeWidth={isSel ? 2.5/zoom : 1.5/zoom}
-                      strokeDasharray={isConflict || dimmed ? `${8/zoom} ${4/zoom}` : "none"} />
+                      strokeDasharray={isConflict || dimmed ? `${8/zoom} ${4/zoom}` : "none"}
+                      className={status.code === "active" && !isConflict ? "active-pulse" : ""} />
                   )}
                   {isSel && p.radius > 0 && isEditor && (
                     <circle cx={p.ix + p.radius} cy={p.iy} r={7/zoom} fill={col} stroke="#fff" strokeWidth={1.5/zoom} />
@@ -82,7 +98,7 @@ export default function MapCanvas({
                   <circle cx={p.ix} cy={p.iy} r={dotR} fill={col}
                     stroke={isConflict ? "#FF2D2D" : "#0D0F14"} strokeWidth={2/zoom} />
                   <text x={p.ix} y={p.iy + dotR + 12/zoom}
-                    textAnchor="middle" fill="#F0F2F5"
+                    textAnchor="middle" fill={col}
                     fontSize={10/zoom} fontFamily="monospace" fontWeight="bold">{p.number}</text>
                   <text x={p.ix} y={p.iy + dotR + 24/zoom}
                     textAnchor="middle" fill={status.color}
