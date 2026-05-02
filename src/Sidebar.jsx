@@ -60,7 +60,7 @@ export default function Sidebar({ selPermit, conflictIds, isEditor, plotImage, s
                 onChange={e => updatePermit(selPermit.id, { validFrom: e.target.value })}
                 style={{ ...inputStyle, fontSize: 10, padding: "5px 7px", marginBottom: 6 }} />
               <div style={{ fontSize: 9, color: "#5A6070", marginBottom: 3 }}>VALID TO</div>
-              <input type="datetime-local" value={selPermit.validTo ? toLocalInput(new Date(selPermit.validFrom)) : ""} disabled={!isEditor}
+              <input type="datetime-local" value={selPermit.validTo ? toLocalInput(new Date(selPermit.validTo)) : ""} disabled={!isEditor}
                 onChange={e => updatePermit(selPermit.id, { validTo: e.target.value })}
                 style={{ ...inputStyle, fontSize: 10, padding: "5px 7px" }} />
             </div>
