@@ -17,7 +17,7 @@ export default function ListTab({ permits, conflictIds, isEditor, removePermit }
     if (centerFilter !== "all" && p.workCenter !== centerFilter) return false;
     if (filter === "hot"      && p.type !== "hot")  return false;
     if (filter === "cold"     && p.type !== "cold") return false;
-    if (filter === "active"   && permitStatus(p).code !== "active")   return false;
+    if (filter === "active" && (p.liveStatus || permitStatus(p)).code !== "active") return false;
     if (filter === "conflict" && !conflictIds.has(p.id)) return false;
     return true;
   });
@@ -55,8 +55,8 @@ export default function ListTab({ permits, conflictIds, isEditor, removePermit }
           </div>
         : <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 900 }}>
             {filtered.map(p => {
-              const st = permitStatus(p);
-              const remain = timeRemaining(p);
+              const st     = p.liveStatus    || permitStatus(p);
+              const remain = p.liveRemaining || timeRemaining(p);
               return (
                 <div key={p.id} style={{ background: "#13161D", border: `1px solid ${conflictIds.has(p.id) ? "#FF2D2D" : "#1E2330"}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <div style={{ width: 11, height: 11, borderRadius: "50%", background: p.typeInfo.color, flexShrink: 0, marginTop: 4 }} />

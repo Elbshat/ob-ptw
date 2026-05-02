@@ -21,8 +21,8 @@ export default function Sidebar({ selPermit, conflictIds, isEditor, plotImage, s
             <div style={{ fontSize: 10, color: "#8090A0", marginBottom: 8 }}>{selPermit.typeInfo.label}</div>
 
             {(() => {
-              const st = permitStatus(selPermit);
-              const remain = timeRemaining(selPermit);
+              const st     = selPermit.liveStatus    || permitStatus(selPermit);
+              const remain = selPermit.liveRemaining || timeRemaining(selPermit);
               return (
                 <div style={{ marginBottom: 8 }}>
                   <span style={{ fontSize: 10, color: st.color, background: st.color + "1A", border: `1px solid ${st.color}55`, padding: "2px 7px", borderRadius: 4, fontWeight: 700 }}>● {st.label}</span>

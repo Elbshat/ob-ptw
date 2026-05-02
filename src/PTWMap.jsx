@@ -29,7 +29,7 @@ export default function PTWMap() {
   const [selected, setSelected]     = useState(null);
   const [tab, setTab]               = useState("map");
   const [, forceUpdate]             = useState(0);
-  const [, tickClock]               = useState(0);
+ const [now, setNow] = useState(() => Date.now());
   const [token, setToken]           = useState(() => localStorage.getItem("ptw_token") || null);
   const [username, setUsername]     = useState(() => localStorage.getItem("ptw_user") || null);
   const [loading, setLoading]       = useState(true);
@@ -89,7 +89,7 @@ export default function PTWMap() {
 
   // Tick clock every 30s for active/expired badges
   useEffect(() => {
-    const t = setInterval(() => tickClock(n => n + 1), 30000);
+    const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -148,8 +148,16 @@ export default function PTWMap() {
   };
 
   // ── Derived data ────────────────────────────────────────────────
-  const conflictPairs = getConflictPairs(permits);
-  const conflictIds   = new Set(conflictPairs.flat());
+const permitsWithStatus = useMemo(() =>
+  permits.map(p => ({
+    ...p,
+    liveStatus:    permitStatus(p, now),    // uses your existing return format ✅
+    liveRemaining: timeRemaining(p, now),
+  }))
+, [permits, now]);
+
+const conflictPairs = getConflictPairs(permitsWithStatus);
+const conflictIds   = new Set(conflictPairs.flat());
 
   // ── Coordinate helpers ──────────────────────────────────────────
   const toImg = (clientX, clientY) => {
@@ -459,8 +467,8 @@ const removePermit = useCallback(async (id) => {
             ix: pendingPos.ix,
             iy: pendingPos.iy,
             radius: 0,
-            validFrom: form.validFrom || null,
-            validTo: form.validTo || null,
+            validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : null,
+            validTo:   form.validTo   ? new Date(form.validTo).toISOString()   : null,
           },
           token
         )
@@ -474,17 +482,27 @@ const removePermit = useCallback(async (id) => {
   };
 
   // ── Update permit ──────────────────────────────────────────────
-  const updatePermit = async (id, patch) => {
-    if (!isEditor) return;
-    setPermits(prev =>
-      prev.map(p => (p.id === id ? { ...p, ...patch } : p))
+const normalizePermitPatch = (patch) => {
+  const clean = { ...patch };
+  if ("validFrom" in clean)
+    clean.validFrom = clean.validFrom ? new Date(clean.validFrom).toISOString() : null;
+  if ("validTo" in clean)
+    clean.validTo = clean.validTo ? new Date(clean.validTo).toISOString() : null;
+  return clean;
+};
+
+const updatePermit = async (id, patch) => {
+  if (!isEditor) return;
+  const cleanPatch = normalizePermitPatch(patch);
+  setPermits(prev =>
+    prev.map(p => (p.id === id ? { ...p, ...cleanPatch } : p))
+  );
+  try {
+    await apiCall(() =>
+      api.send("PATCH", `/api/permits/${id}`, cleanPatch, token)
     );
-    try {
-      await apiCall(() =>
-        api.send("PATCH", `/api/permits/${id}`, patch, token)
-      );
-    } catch {}
-  };
+  } catch {}
+};
 
 
   // ── Map file upload ────────────────────────────────────────────
@@ -535,7 +553,7 @@ const onMapFile = async (e) => {
 };
 
   // ── Derived UI state ───────────────────────────────────────────
-  const selPermit = permits.find(p => p.id === selected);
+  const selPermit = permitsWithStatus.find(p => p.id === selected);
   const isInteracting = !!interRef.current;
   const cursorMode =
     isInteracting &&
@@ -670,7 +688,7 @@ const onMapFile = async (e) => {
             {conflictPairs.length > 1 ? "S" : ""}
           </div>
         )}
-        {conflictIds.size === 0 && permits.length > 0 && (
+        {conflictIds.size === 0 && permitsWithStatus.length > 0 && (
           <div
             style={{
               background: "rgba(0,230,118,0.1)",
@@ -812,7 +830,7 @@ const onMapFile = async (e) => {
         }}
       >
         {tabBtn("map", "MAP", false)}
-        {tabBtn("list", `PERMITS (${permits.length})`, false)}
+        {tabBtn("list", `PERMITS (${permitsWithStatus.length})`, false)}
         {tabBtn(
           "conflicts",
           `CONFLICTS (${conflictPairs.length})`,
@@ -832,7 +850,7 @@ const onMapFile = async (e) => {
               pan={pan}
               zoom={zoom}
               natSize={natSize}
-              permits={permits}
+              permits={permitsWithStatus}
               conflictPairs={conflictPairs}
               conflictIds={conflictIds}
               selected={selected}
@@ -858,7 +876,7 @@ const onMapFile = async (e) => {
         {/* LIST TAB */}
         {tab === "list" && (
           <ListTab
-            permits={permits}
+            permits={permitsWithStatus}
             conflictIds={conflictIds}
             isEditor={isEditor}
             removePermit={removePermit}
@@ -1032,7 +1050,7 @@ const onMapFile = async (e) => {
 
       {showReport && (
         <DailyReportModal
-          permits={permits}
+          permits={permitsWithStatus}
           onClose={() => setShowReport(false)}
         />
       )}
