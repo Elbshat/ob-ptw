@@ -1,4 +1,4 @@
-import { PERMIT_TYPES, permitStatus, timeRemaining, inputStyle } from "./helpers.js";
+import { PERMIT_TYPES, permitStatus, timeRemaining, inputStyle,toLocalInput } from "./helpers.js";
 
 export default function Sidebar({ selPermit, conflictIds, isEditor, plotImage, selected, updatePermit, removePermit }) {
   return (
@@ -56,11 +56,11 @@ export default function Sidebar({ selPermit, conflictIds, isEditor, plotImage, s
 
             <div style={{ marginTop: 8, marginBottom: 8 }}>
               <div style={{ fontSize: 9, color: "#5A6070", marginBottom: 3 }}>VALID FROM</div>
-              <input type="datetime-local" value={selPermit.validFrom ? selPermit.validFrom.slice(0,16) : ""} disabled={!isEditor}
+              <input type="datetime-local" value={selPermit.validFrom ? toLocalInput(new Date(selPermit.validFrom)) : ""} disabled={!isEditor}
                 onChange={e => updatePermit(selPermit.id, { validFrom: e.target.value })}
                 style={{ ...inputStyle, fontSize: 10, padding: "5px 7px", marginBottom: 6 }} />
               <div style={{ fontSize: 9, color: "#5A6070", marginBottom: 3 }}>VALID TO</div>
-              <input type="datetime-local" value={selPermit.validTo ? selPermit.validTo.slice(0,16) : ""} disabled={!isEditor}
+              <input type="datetime-local" value={selPermit.validFrom ? toLocalInput(new Date(selPermit.validFrom)) : ""} disabled={!isEditor}
                 onChange={e => updatePermit(selPermit.id, { validTo: e.target.value })}
                 style={{ ...inputStyle, fontSize: 10, padding: "5px 7px" }} />
             </div>
