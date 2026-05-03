@@ -5,14 +5,18 @@ let initialized = false;
 export async function ensureSchema() {
   if (initialized) return;
   await sql`
-    CREATE TABLE IF NOT EXISTS map (
-      id          INTEGER PRIMARY KEY CHECK (id = 1),
-      image_url   TEXT,
-      nat_w       INTEGER,
-      nat_h       INTEGER,
-      updated_at  TIMESTAMPTZ
-    );
-  `;
+  CREATE TABLE IF NOT EXISTS map (
+    id          INTEGER PRIMARY KEY CHECK (id = 1),
+    image_url   TEXT,
+    hazard_url  TEXT,
+    nat_w       INTEGER,
+    nat_h       INTEGER,
+    updated_at  TIMESTAMPTZ
+  );
+`;
+
+await sql`ALTER TABLE map ADD COLUMN IF NOT EXISTS hazard_url TEXT;`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS permits (
       id          SERIAL PRIMARY KEY,
@@ -34,16 +38,16 @@ export async function ensureSchema() {
 }
 
 export const rowToPermit = (r) => ({
-  id:          r.id,
-  number:      r.number,
-  workCenter:  r.work_center,
+  id: r.id,
+  number: r.number,
+  workCenter: r.work_center,
   description: r.description,
-  type:        r.type,
-  ix:          Number(r.ix),
-  iy:          Number(r.iy),
-  radius:      Number(r.radius),
-  validFrom:   r.valid_from ? new Date(r.valid_from).toISOString() : null,
-  validTo:     r.valid_to   ? new Date(r.valid_to).toISOString()   : null,
-  createdAt:   r.created_at ? new Date(r.created_at).toISOString() : null,
-  updatedAt:   r.updated_at ? new Date(r.updated_at).toISOString() : null,
+  type: r.type,
+  ix: Number(r.ix),
+  iy: Number(r.iy),
+  radius: Number(r.radius),
+  validFrom: r.valid_from ? new Date(r.valid_from).toISOString() : null,
+  validTo: r.valid_to ? new Date(r.valid_to).toISOString() : null,
+  createdAt: r.created_at ? new Date(r.created_at).toISOString() : null,
+  updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null,
 });

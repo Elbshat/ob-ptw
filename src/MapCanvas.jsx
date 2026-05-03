@@ -4,7 +4,7 @@ export default function MapCanvas({
   canvasRef, plotImage, imageReady, pan, zoom, natSize,
   permits, conflictPairs, conflictIds, selected, isEditor,
   handleImageLoad, handleCanvasMouseDown, handleCanvasMouseUp,
-  cursorMode, fileRef,
+  cursorMode, fileRef,  hazardLayer, hazardOpacity, 
 }) {
   return (
     <div ref={canvasRef}
@@ -36,6 +36,16 @@ export default function MapCanvas({
           <img key={plotImage} src={plotImage} onLoad={handleImageLoad}
             style={{ display: "block", width: natSize.w, height: natSize.h, maxWidth: "none" }}
             draggable={false} alt="plot plan" crossOrigin="anonymous" />
+            {hazardLayer && (
+  <img src={hazardLayer} alt="hazard zone layer"
+    style={{
+      position: "absolute", top: 0, left: 0,
+      width: natSize.w, height: natSize.h, maxWidth: "none",
+      opacity: hazardOpacity, mixBlendMode: "multiply", pointerEvents: "none",
+    }}
+    draggable={false}
+  />
+)}
           <svg width={natSize.w} height={natSize.h}
             style={{ position: "absolute", top: 0, left: 0, overflow: "visible", pointerEvents: "none" }}>
             

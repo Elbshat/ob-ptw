@@ -9,10 +9,11 @@ export default async function handler(req, res) {
   try {
     await ensureSchema();
 
+
     const mapRes = await sql`
-      SELECT image_url AS image, nat_w AS "natW", nat_h AS "natH", updated_at AS "updatedAt"
-      FROM map WHERE id = 1
-    `;
+  SELECT image_url AS image, hazard_url AS "hazardUrl", nat_w AS "natW", nat_h AS "natH", updated_at AS "updatedAt"
+  FROM map WHERE id = 1
+`;
     const permitsRes = await sql`SELECT * FROM permits ORDER BY id ASC`;
 
     res.json({

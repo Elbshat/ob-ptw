@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback ,useMemo} from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { typeInfoOf, toLocalInput, getConflictPairs, fmtDT, permitStatus, timeRemaining, smBtn } from "./helpers.js";
 import { upload } from "@vercel/blob/client";
 import { api } from "./api.js";
@@ -9,44 +9,48 @@ import ListTab from "./ListTab.jsx";
 import Sidebar from "./Sidebar.jsx";
 import MapCanvas from "./MapCanvas.jsx";
 
-
 export default function PTWMap() {
-  const [permits, setPermits]       = useState([]);
-  const [plotImage, setPlotImage]   = useState(null);
-  const [natSize, setNatSize]       = useState({ w: 1, h: 1 });
+  const [permits, setPermits] = useState([]);
+  const [plotImage, setPlotImage] = useState(null);
+  const [natSize, setNatSize] = useState({ w: 1, h: 1 });
   const [imageReady, setImageReady] = useState(false);
-  const [zoom, setZoom]             = useState(1);
-  const [pan, setPan]               = useState({ x: 0, y: 0 });
-  const [showModal, setShowModal]   = useState(false);
-  const [showLogin, setShowLogin]   = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [showModal, setShowModal] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [pendingPos, setPendingPos] = useState(null);
-  const [form, setForm]             = useState({
+  const [form, setForm] = useState({
     number: "", workCenter: "", description: "",
     type: "hot", validFrom: "", validTo: "",
   });
-  const [loginForm, setLoginForm]   = useState({ username: "", password: "", err: "" });
-  const [selected, setSelected]     = useState(null);
-  const [tab, setTab]               = useState("map");
-  const [, forceUpdate]             = useState(0);
- const [now, setNow] = useState(() => Date.now());
-  const [token, setToken]           = useState(() => localStorage.getItem("ptw_token") || null);
-  const [username, setUsername]     = useState(() => localStorage.getItem("ptw_user") || null);
-  const [loading, setLoading]       = useState(true);
+  const [loginForm, setLoginForm] = useState({ username: "", password: "", err: "" });
+  const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState("map");
+  const [, forceUpdate] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const [token, setToken] = useState(() => localStorage.getItem("ptw_token") || null);
+  const [username, setUsername] = useState(() => localStorage.getItem("ptw_user") || null);
+  const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState("");
+  const [hazardLayer, setHazardLayer] = useState(null);
+  const [showHazardLayer, setShowHazardLayer] = useState(true);
+  const [hazardOpacity, setHazardOpacity] = useState(0.45);
+  const hazardFileRef = useRef(null);
+  const hazardRef = useRef(null); // for polling comparison
 
   const isEditor = !!token;
 
-  const zoomRef     = useRef(1);
-  const panRef      = useRef({ x: 0, y: 0 });
-  const permitsRef  = useRef([]);
-  const interRef    = useRef(null);
-  const didMoveRef  = useRef(false);
-  const canvasRef   = useRef(null);
-  const fileRef     = useRef(null);
-  const tokenRef    = useRef(token);
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const permitsRef = useRef([]);
+  const interRef = useRef(null);
+  const didMoveRef = useRef(false);
+  const canvasRef = useRef(null);
+  const fileRef = useRef(null);
+  const tokenRef = useRef(token);
   const patchTimers = useRef({});
-  const plotRef     = useRef(null);
+  const plotRef = useRef(null);
 
   // Keep refs in sync
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
@@ -59,7 +63,7 @@ export default function PTWMap() {
   const loadState = useCallback(async () => {
     // Don't poll if user is actively interacting (prevents overwriting local changes)
     if (interRef.current) return;
-    
+
     try {
       const { map, permits: srvPermits } = await api.get("/api/state");
       const hydrated = srvPermits.map(p => ({ ...p, typeInfo: typeInfoOf(p.type) }));
@@ -69,6 +73,14 @@ export default function PTWMap() {
         if (map.natW && map.natH) setNatSize({ w: map.natW, h: map.natH });
       } else if (!map?.image) {
         setPlotImage(null);
+      }
+      // Load hazard layer from server
+      if (map?.hazardUrl && map.hazardUrl !== hazardRef.current) {
+        hazardRef.current = map.hazardUrl;
+        setHazardLayer(map.hazardUrl);
+      } else if (!map?.hazardUrl) {
+        hazardRef.current = null;
+        setHazardLayer(null);
       }
     } catch {
       setSyncStatus("⚠ offline");
@@ -143,28 +155,28 @@ export default function PTWMap() {
     if (!tokenRef.current) return;
     clearTimeout(patchTimers.current[id]);
     patchTimers.current[id] = setTimeout(() => {
-      apiCall(() => api.send("PATCH", `/api/permits/${id}`, patch, tokenRef.current)).catch(() => {});
+      apiCall(() => api.send("PATCH", `/api/permits/${id}`, patch, tokenRef.current)).catch(() => { });
     }, 350);
   };
 
   // ── Derived data ────────────────────────────────────────────────
-const permitsWithStatus = useMemo(() =>
-  permits.map(p => ({
-    ...p,
-    liveStatus:    permitStatus(p, now),    // uses your existing return format ✅
-    liveRemaining: timeRemaining(p, now),
-  }))
-, [permits, now]);
+  const permitsWithStatus = useMemo(() =>
+    permits.map(p => ({
+      ...p,
+      liveStatus: permitStatus(p, now),    // uses your existing return format ✅
+      liveRemaining: timeRemaining(p, now),
+    }))
+    , [permits, now]);
 
-const conflictPairs = getConflictPairs(permitsWithStatus);
-const conflictIds   = new Set(conflictPairs.flat());
+  const conflictPairs = getConflictPairs(permitsWithStatus);
+  const conflictIds = new Set(conflictPairs.flat());
 
   // ── Coordinate helpers ──────────────────────────────────────────
   const toImg = (clientX, clientY) => {
     const rect = canvasRef.current.getBoundingClientRect();
     return {
       x: (clientX - rect.left - panRef.current.x) / zoomRef.current,
-      y: (clientY - rect.top  - panRef.current.y) / zoomRef.current,
+      y: (clientY - rect.top - panRef.current.y) / zoomRef.current,
     };
   };
 
@@ -202,45 +214,45 @@ const conflictIds   = new Set(conflictPairs.flat());
   };
 
   // ── Zoom helpers ───────────────────────────────────────────────
-const zoomBy = (factor) => {
-  if (!canvasRef.current) return;
-  const rect = canvasRef.current.getBoundingClientRect();
-  applyZoomAt(factor, rect.width / 2, rect.height / 2);
-};
+  const zoomBy = (factor) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    applyZoomAt(factor, rect.width / 2, rect.height / 2);
+  };
 
-const resetView = useCallback(() => {
-  if (!canvasRef.current) return;
+  const resetView = useCallback(() => {
+    if (!canvasRef.current) return;
 
-  const cw = canvasRef.current.clientWidth;
-  const ch = canvasRef.current.clientHeight;
+    const cw = canvasRef.current.clientWidth;
+    const ch = canvasRef.current.clientHeight;
 
-  const fitZ = Math.min(cw / natSize.w, ch / natSize.h) * 0.95;
-  const px = (cw - natSize.w * fitZ) / 2;
-  const py = (ch - natSize.h * fitZ) / 2;
+    const fitZ = Math.min(cw / natSize.w, ch / natSize.h) * 0.95;
+    const px = (cw - natSize.w * fitZ) / 2;
+    const py = (ch - natSize.h * fitZ) / 2;
 
-  zoomRef.current = fitZ;
-  panRef.current = { x: px, y: py };
+    zoomRef.current = fitZ;
+    panRef.current = { x: px, y: py };
 
-  setZoom(fitZ);
-  setPan({ x: px, y: py });
-}, [natSize]);
+    setZoom(fitZ);
+    setPan({ x: px, y: py });
+  }, [natSize]);
 
-// ── Remove permit ──────────────────────────────────────────────
-const removePermit = useCallback(async (id) => {
-  if (!isEditor) return;
+  // ── Remove permit ──────────────────────────────────────────────
+  const removePermit = useCallback(async (id) => {
+    if (!isEditor) return;
 
-  try {
-    await apiCall(() =>
-      api.send("DELETE", `/api/permits/${id}`, null, token)
-    );
+    try {
+      await apiCall(() =>
+        api.send("DELETE", `/api/permits/${id}`, null, token)
+      );
 
-    setPermits(prev => prev.filter(p => p.id !== id));
+      setPermits(prev => prev.filter(p => p.id !== id));
 
-    if (selected === id) {
-      setSelected(null);
-    }
-  } catch {}
-}, [isEditor, token, selected, apiCall]);
+      if (selected === id) {
+        setSelected(null);
+      }
+    } catch { }
+  }, [isEditor, token, selected, apiCall]);
 
   // ── Wheel zoom ─────────────────────────────────────────────────
   useEffect(() => {
@@ -256,7 +268,7 @@ const removePermit = useCallback(async (id) => {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [plotImage, applyZoomAt]); // Re-attach when plot image changes or applyZoomAt changes
+  }, [plotImage, applyZoomAt,tab]); // Re-attach when plot image changes or applyZoomAt changes
 
   // ── Keyboard shortcuts ─────────────────────────────────────────
   useEffect(() => {
@@ -360,8 +372,8 @@ const removePermit = useCallback(async (id) => {
         if (!p.radius) continue;
         const dist = Math.sqrt((ip.x - p.ix) ** 2 + (ip.y - p.iy) ** 2);
         if (Math.abs(dist - p.radius) < 12 / z) {
-          interRef.current = { 
-            mode: "resize", 
+          interRef.current = {
+            mode: "resize",
             id: p.id,
             centerX: p.ix,  // Lock center position
             centerY: p.iy,
@@ -380,8 +392,8 @@ const removePermit = useCallback(async (id) => {
         if (isEditor) {
           if (p.id === selected && !p.radius) {
             // Selected permit with no radius → drag-out to create zone
-            interRef.current = { 
-              mode: "resize", 
+            interRef.current = {
+              mode: "resize",
               id: p.id,
               centerX: p.ix,  // Lock center position
               centerY: p.iy,
@@ -468,7 +480,7 @@ const removePermit = useCallback(async (id) => {
             iy: pendingPos.iy,
             radius: 0,
             validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : null,
-            validTo:   form.validTo   ? new Date(form.validTo).toISOString()   : null,
+            validTo: form.validTo ? new Date(form.validTo).toISOString() : null,
           },
           token
         )
@@ -478,92 +490,140 @@ const removePermit = useCallback(async (id) => {
         { ...created, typeInfo: typeInfoOf(created.type) },
       ]);
       setShowModal(false);
-    } catch {}
+    } catch { }
   };
 
   // ── Update permit ──────────────────────────────────────────────
-const normalizePermitPatch = (patch) => {
-  const clean = { ...patch };
-  if ("validFrom" in clean)
-    clean.validFrom = clean.validFrom ? new Date(clean.validFrom).toISOString() : null;
-  if ("validTo" in clean)
-    clean.validTo = clean.validTo ? new Date(clean.validTo).toISOString() : null;
-  return clean;
-};
+  const normalizePermitPatch = (patch) => {
+    const clean = { ...patch };
+    if ("validFrom" in clean)
+      clean.validFrom = clean.validFrom ? new Date(clean.validFrom).toISOString() : null;
+    if ("validTo" in clean)
+      clean.validTo = clean.validTo ? new Date(clean.validTo).toISOString() : null;
+    return clean;
+  };
 
-const updatePermit = async (id, patch) => {
-  if (!isEditor) return;
-  const cleanPatch = normalizePermitPatch(patch);
-  setPermits(prev =>
-    prev.map(p => (p.id === id ? { ...p, ...cleanPatch } : p))
-  );
-  try {
-    await apiCall(() =>
-      api.send("PATCH", `/api/permits/${id}`, cleanPatch, token)
+  const updatePermit = async (id, patch) => {
+    if (!isEditor) return;
+    const cleanPatch = normalizePermitPatch(patch);
+    setPermits(prev =>
+      prev.map(p => (p.id === id ? { ...p, ...cleanPatch } : p))
     );
-  } catch {}
-};
+    try {
+      await apiCall(() =>
+        api.send("PATCH", `/api/permits/${id}`, cleanPatch, token)
+      );
+    } catch { }
+  };
 
 
   // ── Map file upload ────────────────────────────────────────────
-const onMapFile = async (e) => {
-  const f = e.target.files[0];
-  e.target.value = "";
-  if (!f) return;
-  if (!isEditor) {
-    alert("Only the editor can change the map.");
-    return;
-  }
+  const onMapFile = async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!isEditor) {
+      alert("Only the editor can change the map.");
+      return;
+    }
 
-  const { natW, natH } = await new Promise((resolve) => {
-    const probe = new Image();
-    const objectUrl = URL.createObjectURL(f);
-    probe.onload = () => {
-      resolve({ natW: probe.naturalWidth, natH: probe.naturalHeight });
-      URL.revokeObjectURL(objectUrl);
-    };
-    probe.src = objectUrl;
-  });
-
-  try {
-    setSyncStatus("⏳ uploading…");
-
-    const { url } = await upload(f.name, f, {
-      access: "public",
-      handleUploadUrl: "/api/map-token",
-      clientPayload: token,
+    const { natW, natH } = await new Promise((resolve) => {
+      const probe = new Image();
+      const objectUrl = URL.createObjectURL(f);
+      probe.onload = () => {
+        resolve({ natW: probe.naturalWidth, natH: probe.naturalHeight });
+        URL.revokeObjectURL(objectUrl);
+      };
+      probe.src = objectUrl;
     });
 
-    // ✅ Show image IMMEDIATELY after blob upload — don't wait for DB
-    setImageReady(false);
-    setPlotImage(url);
-    setNatSize({ w: natW, h: natH });
-    setPermits([]);
-    setSelected(null);
+    try {
+      setSyncStatus("⏳ uploading…");
 
-    // Save URL to DB separately — won't block the image display
-    await apiCall(() =>
-      api.send("POST", "/api/map", { url, natW, natH }, token)
-    );
+      const { url } = await upload(f.name, f, {
+        access: "public",
+        handleUploadUrl: "/api/map-token",
+        clientPayload: token,
+      });
 
-  } catch (err) {
-    setSyncStatus("⚠ upload failed");
-    console.error(err);
-  }
-};
+      // ✅ Show image IMMEDIATELY after blob upload — don't wait for DB
+      setImageReady(false);
+      setPlotImage(url);
+      setNatSize({ w: natW, h: natH });
+      setPermits([]);
+      setSelected(null);
+
+      // Save URL to DB separately — won't block the image display
+      await apiCall(() =>
+        api.send("POST", "/api/map", { url, natW, natH }, token)
+      );
+
+    } catch (err) {
+      setSyncStatus("⚠ upload failed");
+      console.error(err);
+    }
+  };
+
+  const onHazardFile = async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+
+    // Show locally immediately for instant feedback
+    const localUrl = URL.createObjectURL(f);
+    setHazardLayer(localUrl);
+    setShowHazardLayer(true);
+
+    try {
+      setSyncStatus("⏳ uploading hazard layer…");
+      const { url } = await upload(f.name, f, {
+        access: "public",
+        handleUploadUrl: "/api/map-token",
+        clientPayload: token,
+      });
+
+      // Save URL to DB
+      await api.send("POST", "/api/hazard", { url }, token);
+      hazardRef.current = url;
+      setHazardLayer(url); // swap local blob URL → permanent URL
+      setSyncStatus("✓ saved");
+      setTimeout(() => setSyncStatus(""), 1500);
+    } catch (err) {
+      setSyncStatus("⚠ hazard upload failed");
+      console.error(err);
+    }
+  };
+
+  // ── Clear all permits (new day) ──────────────────────────────────
+  const clearAllPermits = useCallback(async () => {
+    if (!isEditor) return;
+    if (!window.confirm("Remove ALL permits? This resets the board for a new shift/day.")) return;
+    try {
+      setSyncStatus("⏳ clearing…");
+      await Promise.all(permits.map(p =>
+        api.send("DELETE", `/api/permits/${p.id}`, null, token)
+      ));
+      setPermits([]);
+      setSelected(null);
+      setSyncStatus("✓ cleared");
+      setTimeout(() => setSyncStatus(""), 1500);
+    } catch {
+      setSyncStatus("⚠ clear failed");
+    }
+  }, [isEditor, token, permits]);
 
   // ── Derived UI state ───────────────────────────────────────────
   const selPermit = permitsWithStatus.find(p => p.id === selected);
   const isInteracting = !!interRef.current;
   const cursorMode =
     isInteracting &&
-    (interRef.current.mode === "pan" || interRef.current.mode === "drag")
+      (interRef.current.mode === "pan" || interRef.current.mode === "drag")
       ? "grabbing"
       : plotImage
-      ? isEditor
-        ? "crosshair"
-        : "default"
-      : "default";
+        ? isEditor
+          ? "crosshair"
+          : "default"
+        : "default";
 
   const tabBtn = (id, label, isAlert) => (
     <button
@@ -579,8 +639,8 @@ const onMapFile = async (e) => {
             ? "#FF5555"
             : "#663333"
           : tab === id
-          ? "#F0F2F5"
-          : "#5A6070",
+            ? "#F0F2F5"
+            : "#5A6070",
         padding: "8px 16px",
         fontSize: 11,
         cursor: "pointer",
@@ -712,6 +772,12 @@ const onMapFile = async (e) => {
             flexWrap: "wrap",
           }}
         >
+          {isEditor && permits.length > 0 && (
+            <button onClick={clearAllPermits} title="Clear all permits for new shift"
+              style={{ ...smBtn, padding: "5px 12px", fontSize: 10, color: "#FF5555", borderColor: "#FF2D2D44" }}>
+              🗑 NEW DAY
+            </button>
+          )}
           {/* Daily report button */}
           <button
             onClick={() => setShowReport(true)}
@@ -789,6 +855,7 @@ const onMapFile = async (e) => {
               >
                 {plotImage ? "🔄 CHANGE MAP" : "📂 LOAD MAP"}
               </button>
+
               <button
                 onClick={handleLogout}
                 style={{ ...smBtn, padding: "5px 12px", fontSize: 10 }}
@@ -827,6 +894,7 @@ const onMapFile = async (e) => {
           borderBottom: "1px solid #1E2330",
           display: "flex",
           flexShrink: 0,
+          paddingInline: "12px"
         }}
       >
         {tabBtn("map", "MAP", false)}
@@ -836,6 +904,49 @@ const onMapFile = async (e) => {
           `CONFLICTS (${conflictPairs.length})`,
           conflictPairs.length > 0
         )}
+        {/* Hazard Layer buttons */}
+    
+        <div style={{display:'flex', alignItems:"center", gap:"12px",marginLeft:"auto"}}>
+
+       
+        {hazardLayer && (
+          <>
+            <button onClick={() => setShowHazardLayer(v => !v)}
+              style={{
+                ...smBtn, padding: "5px 10px", fontSize: 10,
+                color: showHazardLayer ? "#C084FC" : "#5A6070",
+                borderColor: showHazardLayer ? "#C084FC44" : "#2E344566"
+              }}>
+              {showHazardLayer ? "👁 ON" : "👁 OFF"}
+            </button>
+            <input type="range" min={10} max={100} step={5}
+              value={Math.round(hazardOpacity * 100)}
+              onChange={e => setHazardOpacity(parseFloat(e.target.value) / 100)}
+              style={{ width: 70, accentColor: "#C084FC" }} />
+            <button
+              onClick={async () => {
+                if (!window.confirm("Remove hazard layer for all users?")) return;
+                try {
+                  await api.send("DELETE", "/api/hazard", null, token);
+                  setHazardLayer(null);
+                  hazardRef.current = null;
+                } catch { setSyncStatus("⚠ remove failed"); }
+              }}
+              style={{ ...smBtn, padding: "5px 8px", fontSize: 10, color: "#FF5555", borderColor: "#FF2D2D44" }}
+              title="Remove hazard layer">✕
+            </button>  </>
+        )}
+            <input
+          ref={hazardFileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={onHazardFile}
+        />
+        <button onClick={() => hazardFileRef.current.click()}
+          style={{ ...smBtn, padding: "5px 12px", fontSize: 10, color: "#C084FC", borderColor: "#C084FC44" }}>
+          {hazardLayer ? "🔄 HAZARD LAYER" : "⚡ HAZARD LAYER"}
+        </button> </div>
       </div>
 
       {/* ─── CONTENT ─── */}
@@ -860,6 +971,8 @@ const onMapFile = async (e) => {
               handleCanvasMouseUp={handleCanvasMouseUp}
               cursorMode={cursorMode}
               fileRef={fileRef}
+              hazardLayer={showHazardLayer ? hazardLayer : null}
+              hazardOpacity={hazardOpacity}
             />
             <Sidebar
               selPermit={selPermit}
