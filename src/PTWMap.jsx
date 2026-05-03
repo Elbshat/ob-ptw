@@ -34,7 +34,7 @@ export default function PTWMap() {
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState("");
   const [hazardLayer, setHazardLayer] = useState(null);
-  const [showHazardLayer, setShowHazardLayer] = useState(true);
+  const [showHazardLayer, setShowHazardLayer] = useState(false);
   const [hazardOpacity, setHazardOpacity] = useState(0.45);
   const hazardFileRef = useRef(null);
   const hazardRef = useRef(null); // for polling comparison
