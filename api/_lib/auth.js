@@ -2,12 +2,12 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET      = process.env.JWT_SECRET      || "change-me";
-const EDITOR_USERNAME = process.env.EDITOR_USERNAME || "admin";
-const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD || "ptw2025";
+const EDITOR_USERNAME = process.env.ADMIN_USERNAME  || "admin";
+const EDITOR_PASSWORD = process.env.ADMIN_PASSWORD  || "ptw2025";
 
 export function verifyCredentials(username, password) {
   if (username !== EDITOR_USERNAME) return false;
-  return bcrypt.compareSync(password || "", bcrypt.hashSync(EDITOR_PASSWORD, 10));
+  return bcrypt.compareSync(password || "", EDITOR_PASSWORD);
 }
 
 export function signToken(username) {
