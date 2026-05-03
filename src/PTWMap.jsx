@@ -849,12 +849,12 @@ export default function PTWMap() {
 
           {isEditor ? (
             <>
-              <button
-                onClick={() => fileRef.current.click()}
-                style={{ ...smBtn, padding: "5px 12px", fontSize: 10 }}
-              >
-                {plotImage ? "🔄 CHANGE MAP" : "📂 LOAD MAP"}
-              </button>
+             {!plotImage && (
+  <button onClick={() => fileRef.current.click()}
+    style={{ ...smBtn, padding: "5px 12px", fontSize: 10 }}>
+    📂 LOAD MAP
+  </button>
+)}
 
               <button
                 onClick={handleLogout}
@@ -911,7 +911,12 @@ export default function PTWMap() {
 
           {hazardLayer && (
             <>
-              <button onClick={() => setShowHazardLayer(v => !v)}
+              
+              {showHazardLayer && <input type="range" min={10} max={100} step={5}
+                value={Math.round(hazardOpacity * 100)}
+                onChange={e => setHazardOpacity(parseFloat(e.target.value) / 100)}
+                style={{ width: 70, accentColor: "#C084FC" }} />}
+                <button onClick={() => setShowHazardLayer(v => !v)}
                 style={{
                   ...smBtn, padding: "5px 10px", fontSize: 10,
                   color: !showHazardLayer ? "#C084FC" : "#5A6070",
@@ -919,11 +924,7 @@ export default function PTWMap() {
                 }}>
                 {showHazardLayer ? "Hide HAC" : "Show HAC"}
               </button>
-              {showHazardLayer && <input type="range" min={10} max={100} step={5}
-                value={Math.round(hazardOpacity * 100)}
-                onChange={e => setHazardOpacity(parseFloat(e.target.value) / 100)}
-                style={{ width: 70, accentColor: "#C084FC" }} />}
-              {isEditor && (
+              {/* {isEditor && (
                 <button
                   onClick={async () => {
                     if (!window.confirm("Remove hazard layer for all users?")) return;
@@ -936,19 +937,15 @@ export default function PTWMap() {
                   style={{ ...smBtn, padding: "5px 8px", fontSize: 10, color: "#FF5555", borderColor: "#FF2D2D44" }}
                   title="Remove hazard layer">✕
                 </button>
-              )}
+              )} */}
             </>
           )}
-          {isEditor && (
-            <>
-              <input ref={hazardFileRef} type="file" accept="image/*"
-                style={{ display: "none" }} onChange={onHazardFile} />
-              <button onClick={() => hazardFileRef.current.click()}
-                style={{ ...smBtn, padding: "5px 12px", fontSize: 10, color: "#C084FC", borderColor: "#C084FC44" }}>
-                {hazardLayer ? "🔄 HAZARD LAYER" : "⚡ HAZARD LAYER"}
-              </button>
-            </>
-          )}
+{/* {hazardLayer && isEditor && (
+  <span style={{ fontSize: 10, color: "#C084FC",
+    border: "1px solid #C084FC44", borderRadius: 4, padding: "4px 10px" }}>
+    ⚡ HAZARD ACTIVE
+  </span>
+)} */}
         </div>
       </div>
 

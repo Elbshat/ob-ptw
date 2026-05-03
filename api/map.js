@@ -9,6 +9,10 @@ export default async function handler(req, res) {
   const auth = requireEditor(req);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
+  if (req.method === "POST") {
+  return res.status(403).json({ error: "Map upload is currently disabled." });
+}
+
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   await ensureSchema();

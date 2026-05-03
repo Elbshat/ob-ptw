@@ -6,6 +6,10 @@ import { requireEditor, handleCors } from "./_lib/auth.js";
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
 
+    if (req.method === "POST" || req.method === "DELETE") {
+  return res.status(403).json({ error: "Hazard layer changes are currently disabled." });
+}
+
   // GET — return current hazard URL (for polling)
   if (req.method === "GET") {
     try {
@@ -16,6 +20,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: e.message });
     }
   }
+
+
 
   // POST — save new hazard URL
   if (req.method === "POST") {
