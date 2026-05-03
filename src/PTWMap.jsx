@@ -268,7 +268,7 @@ export default function PTWMap() {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [plotImage, applyZoomAt,tab]); // Re-attach when plot image changes or applyZoomAt changes
+  }, [plotImage, applyZoomAt, tab]); // Re-attach when plot image changes or applyZoomAt changes
 
   // ── Keyboard shortcuts ─────────────────────────────────────────
   useEffect(() => {
@@ -905,48 +905,51 @@ export default function PTWMap() {
           conflictPairs.length > 0
         )}
         {/* Hazard Layer buttons */}
-    
-        <div style={{display:'flex', alignItems:"center", gap:"12px",marginLeft:"auto"}}>
 
-       
-        {hazardLayer && (
-          <>
-            <button onClick={() => setShowHazardLayer(v => !v)}
-              style={{
-                ...smBtn, padding: "5px 10px", fontSize: 10,
-                color: showHazardLayer ? "#C084FC" : "#5A6070",
-                borderColor: showHazardLayer ? "#C084FC44" : "#2E344566"
-              }}>
-              {showHazardLayer ? "👁 ON" : "👁 OFF"}
-            </button>
-            <input type="range" min={10} max={100} step={5}
-              value={Math.round(hazardOpacity * 100)}
-              onChange={e => setHazardOpacity(parseFloat(e.target.value) / 100)}
-              style={{ width: 70, accentColor: "#C084FC" }} />
-            <button
-              onClick={async () => {
-                if (!window.confirm("Remove hazard layer for all users?")) return;
-                try {
-                  await api.send("DELETE", "/api/hazard", null, token);
-                  setHazardLayer(null);
-                  hazardRef.current = null;
-                } catch { setSyncStatus("⚠ remove failed"); }
-              }}
-              style={{ ...smBtn, padding: "5px 8px", fontSize: 10, color: "#FF5555", borderColor: "#FF2D2D44" }}
-              title="Remove hazard layer">✕
-            </button>  </>
-        )}
-            <input
-          ref={hazardFileRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={onHazardFile}
-        />
-        <button onClick={() => hazardFileRef.current.click()}
-          style={{ ...smBtn, padding: "5px 12px", fontSize: 10, color: "#C084FC", borderColor: "#C084FC44" }}>
-          {hazardLayer ? "🔄 HAZARD LAYER" : "⚡ HAZARD LAYER"}
-        </button> </div>
+        <div style={{ display: 'flex', alignItems: "center", gap: "12px", marginLeft: "auto" }}>
+
+
+          {hazardLayer && (
+            <>
+              <button onClick={() => setShowHazardLayer(v => !v)}
+                style={{
+                  ...smBtn, padding: "5px 10px", fontSize: 10,
+                  color: !showHazardLayer ? "#C084FC" : "#5A6070",
+                  borderColor: !showHazardLayer ? "#C084FC44" : "#2E344566"
+                }}>
+                {showHazardLayer ? "Hide HAC" : "Show HAC"}
+              </button>
+              {showHazardLayer && <input type="range" min={10} max={100} step={5}
+                value={Math.round(hazardOpacity * 100)}
+                onChange={e => setHazardOpacity(parseFloat(e.target.value) / 100)}
+                style={{ width: 70, accentColor: "#C084FC" }} />}
+              {isEditor && (
+                <button
+                  onClick={async () => {
+                    if (!window.confirm("Remove hazard layer for all users?")) return;
+                    try {
+                      await api.send("DELETE", "/api/hazard", null, token);
+                      setHazardLayer(null);
+                      hazardRef.current = null;
+                    } catch { setSyncStatus("⚠ remove failed"); }
+                  }}
+                  style={{ ...smBtn, padding: "5px 8px", fontSize: 10, color: "#FF5555", borderColor: "#FF2D2D44" }}
+                  title="Remove hazard layer">✕
+                </button>
+              )}
+            </>
+          )}
+          {isEditor && (
+            <>
+              <input ref={hazardFileRef} type="file" accept="image/*"
+                style={{ display: "none" }} onChange={onHazardFile} />
+              <button onClick={() => hazardFileRef.current.click()}
+                style={{ ...smBtn, padding: "5px 12px", fontSize: 10, color: "#C084FC", borderColor: "#C084FC44" }}>
+                {hazardLayer ? "🔄 HAZARD LAYER" : "⚡ HAZARD LAYER"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ─── CONTENT ─── */}
